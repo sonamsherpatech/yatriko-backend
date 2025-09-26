@@ -1,4 +1,5 @@
-import { Table, Column, Model, DataType } from "sequelize-typescript";
+import { Table, Column, Model, DataType, HasMany } from "sequelize-typescript";
+import UserProvider from "../../../../extra/user-providers-model";
 
 @Table({
   tableName: "users",
@@ -27,7 +28,7 @@ class User extends Model {
 
   @Column({
     type: DataType.STRING,
-    allowNull: false,
+    allowNull: true,
   })
   declare password: string;
 
@@ -36,6 +37,15 @@ class User extends Model {
     defaultValue: "tourist",
   })
   declare role: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare currentOrganizationNumber: string;
+
+  // @HasMany(() => UserProvider)
+  // declare providers: UserProvider[];
 }
 
 export default User;
