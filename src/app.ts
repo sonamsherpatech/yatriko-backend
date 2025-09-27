@@ -5,6 +5,7 @@ const app = express();
 import { envConfig } from "./config/config";
 import authRoute from "./routes/globals/auth/auth-route";
 import organizationRoute from "./routes/organization/organization-route";
+import organizationCategoryRoute from "./routes/organization/category/category-route";
 
 // import googleAuthRoute from "./routes/google-auth/auth-route";
 // import cookieParser from "cookie-parser";
@@ -24,8 +25,9 @@ app.use(
 //AUTH ROUTE
 app.use("/api", authRoute);
 
-//INSTITUTE ROUTE
+//Organization ROUTE
 app.use("/api/organization", organizationRoute);
+app.use("/api/organization/category", organizationCategoryRoute)
 
 //GOOGLE AUTH ROUTE
 // app.use("/auth",googleAuthRoute)

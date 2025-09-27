@@ -38,6 +38,7 @@ class OrganizationController {
 
       const organizationLogo =
         "https://i.pinimg.com/736x/0f/68/94/0f6894e539589a50809e45833c8bb6c4.jpg";
+        
       //unique organization number generator
       const organizationNumber =
         GenerateRandomOrganizationNumberServices.generateRandomOrganizatoinNumber();
