@@ -20,7 +20,7 @@ import ErrorHandlerService from "../../services/error-handler-service";
 //       cb(new Error("Only image support"));
 //     }
 //   },
-  
+
 // });
 
 const router: Router = express.Router();
@@ -33,8 +33,9 @@ router
     OrganizationController.createGuideTable,
     OrganizationController.createTouristTable,
     OrganizationController.createCategoryTable,
+    OrganizationController.createTourTable,
     ErrorHandlerService.asyncErrorHandler(
-      OrganizationController.createTourTable
+      OrganizationController.createCategoryTourTable
     )
   );
 

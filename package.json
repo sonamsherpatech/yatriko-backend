@@ -22,7 +22,8 @@
     "multer-storage-cloudinary": "^4.0.0",
     "mysql2": "^3.14.5",
     "sequelize": "^6.37.7",
-    "sequelize-typescript": "^2.1.6"
+    "sequelize-typescript": "^2.1.6",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

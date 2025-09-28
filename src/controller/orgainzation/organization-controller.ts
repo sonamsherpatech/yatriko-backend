@@ -38,7 +38,7 @@ class OrganizationController {
 
       const organizationLogo =
         "https://i.pinimg.com/736x/0f/68/94/0f6894e539589a50809e45833c8bb6c4.jpg";
-        
+
       //unique organization number generator
       const organizationNumber =
         GenerateRandomOrganizationNumberServices.generateRandomOrganizatoinNumber();
@@ -193,10 +193,15 @@ class OrganizationController {
     }
   }
 
-  static async createTourTable(req: IExtendedRequest, res: Response) {
-    const organizationNumber = req.currentUser?.currentOrganizationNumber;
-    await sequelize.query(`CREATE TABLE IF NOT EXISTS tour_${organizationNumber} (
-        id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+  static async createTourTable(
+    req: IExtendedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const organizationNumber = req.currentUser?.currentOrganizationNumber;
+      await sequelize.query(`CREATE TABLE IF NOT EXISTS tour_${organizationNumber} (
+        id VARCHAR(36) PRIMARY KEY,
         tourTitle VARCHAR(255) NOT NULL,
         tourDescription TEXT NOT NULL,
         tourNumberOfPeople VARCHAR(36) NOT NULL,
@@ -206,9 +211,23 @@ class OrganizationController {
         tourStartDate Date,
         tourEndDate Date,
         tourStatus ENUM('active', 'inactive','cancelled') DEFAULT 'active',
-        categoryId VARCHAR(36) NOT NULL REFERENCES category_${organizationNumber}(id),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`);
+      next();
+    } catch (error) {
+      res.status(500).json({
+        message: error,
+      });
+    }
+  }
+  static async createCategoryTourTable(req: IExtendedRequest, res: Response) {
+    const organizationNumber = req.currentUser?.currentOrganizationNumber;
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS tour_category_${organizationNumber} (
+        tourId VARCHAR(36) NOT NULL REFERENCES tour_${organizationNumber}(id) ON DELETE CASCADE,
+        categoryId VARCHAR(36) NOT NULL REFERENCES category_${organizationNumber}(id) ON DELETE CASCADE,
+        PRIMARY KEY(tourId, categoryId)
       )`);
 
     res.status(200).json({
