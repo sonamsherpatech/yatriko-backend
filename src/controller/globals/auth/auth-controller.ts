@@ -77,6 +77,9 @@ class AuthController {
       }
     );
     res.status(200).json({
+      data: {
+        username: data[0].username,
+      },
       token,
       message: "Sucessfully Login",
     });
@@ -84,8 +87,6 @@ class AuthController {
 }
 
 export default AuthController;
-
-
 
 /**
  * Login user Algo
