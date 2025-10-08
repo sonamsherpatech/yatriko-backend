@@ -52,6 +52,24 @@ class OrganizationCategoryController {
     });
   }
 
+  static async getCategoryById(req: IExtendedRequest, res: Response) {
+    const organizationNumber = req.currentUser?.currentOrganizationNumber;
+    const categoryId = req.params.id;
+
+    const category = await sequelize.query(
+      `SELECT * FROM category_${organizationNumber} WHERE id = ?`,
+      {
+        replacements: [categoryId],
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    res.status(200).json({
+      data: category,
+      message: "Category Fetched Sucessfully",
+    });
+  }
+
   static async deleteCategory(req: IExtendedRequest, res: Response) {
     const organizationNumber = req.currentUser?.currentOrganizationNumber;
     const id = req.params.id;

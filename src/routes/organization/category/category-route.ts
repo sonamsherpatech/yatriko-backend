@@ -33,5 +33,11 @@ router
     ErrorHandlerService.asyncErrorHandler(
       OrganizationCategoryController.updateCategory
     )
+  )
+  .get(
+    Middleware.isLoggedIn,
+    ErrorHandlerService.asyncErrorHandler(
+      OrganizationCategoryController.getCategoryById
+    )
   );
 export default router;
