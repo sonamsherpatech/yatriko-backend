@@ -7,6 +7,7 @@ import authRoute from "./routes/globals/auth/auth-route";
 import organizationRoute from "./routes/organization/organization-route";
 import organizationCategoryRoute from "./routes/organization/category/category-route";
 import organizationTourRoute from "./routes/organization/tour/tour-route";
+import organizationGuideRoute from "./routes/organization/guide/guide-route";
 
 // import googleAuthRoute from "./routes/google-auth/auth-route";
 // import cookieParser from "cookie-parser";
@@ -30,6 +31,7 @@ app.use("/api", authRoute);
 app.use("/api/organization", organizationRoute);
 app.use("/api/organization/category", organizationCategoryRoute);
 app.use("/api/organization/tour", organizationTourRoute);
+app.use("/api/organization/guide", organizationGuideRoute);
 
 //GOOGLE AUTH ROUTE
 // app.use("/auth",googleAuthRoute)

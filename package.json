@@ -21,6 +21,7 @@
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
     "mysql2": "^3.14.5",
+    "nodemailer": "^7.0.10",
     "sequelize": "^6.37.7",
     "sequelize-typescript": "^2.1.6",
     "uuid": "^13.0.0"
@@ -33,6 +34,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.3.1",
+    "@types/nodemailer": "^7.0.3",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"

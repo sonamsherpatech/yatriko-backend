@@ -59,7 +59,9 @@ class TourController {
       return;
     }
 
-    const tourPhoto = req.file ? req.file.path : null;
+    const tourPhoto = req.file
+      ? req.file.path
+      : "https://imgs.search.brave.com/saWvZkYu0CkteK4E39jo_wLLzLm1bK-Ag6jFDXkiCEY/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9jZG4u/dmVjdG9yc3RvY2su/Y29tL2kvNTAwcC84/OC8zMS9pbWFnZS1u/b3QtYW4tYXZhaWxh/YmxlLWljb24tdmVj/dG9yLTUyOTI4ODMx/LmpwZw";
 
     const tourId = uuidv4();
 
@@ -108,7 +110,7 @@ class TourController {
     });
   }
 
-  static async getTour(req: IExtendedRequest, res: Response) {
+  static async getTours(req: IExtendedRequest, res: Response) {
     const organizationNumber = req.currentUser?.currentOrganizationNumber;
 
     const tours = await sequelize.query(
@@ -255,6 +257,7 @@ class TourController {
       tourDescription,
       tourNumberOfPeople,
       tourPrice,
+      tourStatus,
       tourDuration,
       tourStartDate,
       tourEndDate,
@@ -265,6 +268,7 @@ class TourController {
       !tourDescription ||
       !tourNumberOfPeople ||
       !tourPrice ||
+      !tourStatus ||
       !tourDuration ||
       !tourStartDate ||
       !tourEndDate ||
@@ -272,30 +276,48 @@ class TourController {
     ) {
       res.status(400).json({
         message:
-          "please provide tourTitle, tourDescription, tourNumberOfPeople, tourPrice, tourDuration, tourStartDate, tourEndDate, categoryIds",
+          "please provide tourTitle, tourDescription, tourNumberOfPeople, tourPrice, tourStatus, tourDuration, tourStartDate, tourEndDate, categoryIds",
       });
       return;
     }
 
-    const tourPhoto = req.file ? req.file.path : null;
+    let updateQuery: string;
+    let replacements: any[];
+    if (req.file) {
+      const tourPhoto = req.file.path;
 
-    await sequelize.query(
-      `UPDATE tour_${orgainzationNumber} SET tourTitle = ?, tourDescription = ?, tourNumberOfPeople = ?, tourPrice = ?, tourPhoto = ?, tourDuration = ?, tourStartDate = ?, tourEndDate = ? WHERE id = ?`,
-      {
-        replacements: [
-          tourTitle,
-          tourDescription,
-          tourNumberOfPeople,
-          tourPrice,
-          tourPhoto,
-          tourDuration,
-          tourStartDate,
-          tourEndDate,
-          id,
-        ],
-        type: QueryTypes.UPDATE,
-      }
-    );
+      updateQuery = `UPDATE tour_${orgainzationNumber} SET tourTitle = ?, tourDescription = ?, tourNumberOfPeople = ?, tourPrice = ?, tourStatus=?, tourPhoto = ?, tourDuration = ?, tourStartDate = ?, tourEndDate = ? WHERE id = ?`;
+      replacements = [
+        tourTitle,
+        tourDescription,
+        tourNumberOfPeople,
+        tourPrice,
+        tourStatus,
+        tourPhoto,
+        tourDuration,
+        tourStartDate,
+        tourEndDate,
+        id,
+      ];
+    } else {
+      updateQuery = `UPDATE tour_${orgainzationNumber} SET tourTitle = ?, tourDescription = ?, tourNumberOfPeople = ?, tourPrice = ?, tourStatus=?, tourDuration = ?, tourStartDate = ?, tourEndDate = ? WHERE id = ?`;
+      replacements = [
+        tourTitle,
+        tourDescription,
+        tourNumberOfPeople,
+        tourPrice,
+        tourStatus,
+        tourDuration,
+        tourStartDate,
+        tourEndDate,
+        id,
+      ];
+    }
+
+    await sequelize.query(updateQuery, {
+      replacements,
+      type: QueryTypes.UPDATE,
+    });
 
     await sequelize.query(
       `DELETE FROM tour_category_${orgainzationNumber} WHERE tourId = ?`,

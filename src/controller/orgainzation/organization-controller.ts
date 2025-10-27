@@ -130,12 +130,13 @@ class OrganizationController {
       id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
       guideName VARCHAR(255) NOT NULL,
       guideEmail VARCHAR(255) NOT NULL UNIQUE,
-      guidePhoneNumber VARCHAR(36) NOT NULL UNIQUE,
+      guidePhoneNumber VARCHAR(20) NOT NULL UNIQUE,
       guideAddress VARCHAR(255),
       guideImage VARCHAR(255),
-      guideJoinedDate DATE,
-      guideSalary VARCHAR(255),
+      guideJoinedDate DATE DEFAULT CURRENT_DATE,
+      guideSalary DECIMAL(10, 2),
       guidePassword VARCHAR(255),
+      guideStatus ENUM("active", "inactive", "suspended") DEFAULT "active",
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`);
@@ -209,9 +210,10 @@ class OrganizationController {
         tourPrice VARCHAR(255) NOT NULL,
         tourPhoto VARCHAR(255),
         tourDuration VARCHAR(255) NOT NULL,
-        tourStartDate Date,
-        tourEndDate Date,
+        tourStartDate Date NOT NULL,
+        tourEndDate Date NOT NULL,
         tourStatus ENUM('active', 'inactive','cancelled') DEFAULT 'active',
+        guideId VARCHAR(36) REFERENCES guide_${organizationNumber}(id),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`);

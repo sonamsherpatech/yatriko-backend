@@ -18,7 +18,7 @@ router
   )
   .get(
     Middleware.isLoggedIn,
-    ErrorHandlerService.asyncErrorHandler(TourController.getTour)
+    ErrorHandlerService.asyncErrorHandler(TourController.getTours)
   );
 
 router

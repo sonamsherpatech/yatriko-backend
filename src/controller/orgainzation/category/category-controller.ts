@@ -31,7 +31,22 @@ class OrganizationCategoryController {
       }
     );
 
+    const [categories]: { id: string; createdAt: Date }[] =
+      await sequelize.query(
+        `SELECT id, createdAt FROM category_${organizationNumber} WHERE categoryName = ?`,
+        {
+          replacements: [categoryName],
+          type: QueryTypes.SELECT,
+        }
+      );
+
     res.status(200).json({
+      data: {
+        categoryName,
+        categoryDescription,
+        id: categories.id,
+        createdAt: categories.createdAt,
+      },
       message: "Category added sucessfully",
     });
   }

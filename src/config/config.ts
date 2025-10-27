@@ -31,4 +31,8 @@ export const envConfig = {
   cloudinarySecretKey: process.env.CLOUDINARY_SECRET_KEY,
   cloudinaryAPIKey: process.env.CLOUDINARY_API_KEY,
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
+
+  //nodemailer configureation
+  nodemailerGmail: process.env.NODEMAILER_GMAIL,
+  nodemailerGmailAppPassword: process.env.NODEMAILER_GMAIL_APP_PASSWORD,
 };
