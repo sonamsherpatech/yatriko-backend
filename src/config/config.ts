@@ -20,6 +20,9 @@ export const envConfig = {
   //Frontend_URL
   frontendURL: process.env.FRONTEND_URL,
 
+  //session secret
+  sessionSecret : process.env.SESSION_SECRET,
+
   //jwt
   jsonWebTokenSecretKey: process.env.JWT_SECRET_KEY,
   jsonExpiresIn: process.env.JWT_EXPIRES_IN,

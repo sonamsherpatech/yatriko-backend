@@ -115,7 +115,7 @@ class OrganizationCategoryController {
     }
 
     await sequelize.query(
-      `UPDATE category_${organizationNumber} set categoryName = ?, categoryDescription= ? WHERE id = ?`,
+      `UPDATE category_${organizationNumber} SET categoryName = ?, categoryDescription= ? WHERE id = ?`,
       {
         replacements: [categoryName, categoryDescription, id],
         type: QueryTypes.UPDATE,

@@ -1,5 +1,8 @@
 import express from "express";
 import cors from "cors";
+import session from "express-session";
+import passport from "./config/passport";
+
 const app = express();
 
 import { envConfig } from "./config/config";
@@ -9,14 +12,10 @@ import organizationCategoryRoute from "./routes/organization/category/category-r
 import organizationTourRoute from "./routes/organization/tour/tour-route";
 import organizationGuideRoute from "./routes/organization/guide/guide-route";
 
-// import googleAuthRoute from "./routes/google-auth/auth-route";
-// import cookieParser from "cookie-parser";
-// import passport from "./services/auth/passport";
-
+// Body parser - FIRST
 app.use(express.json());
-// app.use(cookieParser());
-// app.use(passport.initialize());
 
+// CORS - SECOND
 app.use(
   cors({
     origin: envConfig.frontendURL,
@@ -24,16 +23,31 @@ app.use(
   })
 );
 
-//AUTH ROUTE
+// Session middleware - THIRD (BEFORE passport)
+app.use(
+  session({
+    secret: envConfig.sessionSecret!,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: envConfig.nodeENV === "production",
+      maxAge: 24 * 60 * 60 * 1000,
+    },
+  })
+);
+
+// Passport initialization - FOURTH (AFTER session, BEFORE routes)
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Routes - LAST
+// AUTH ROUTE - incaludes both /api/register, /api/login, AND /api/google
 app.use("/api", authRoute);
 
-//Organization ROUTE
+// Organization ROUTES
 app.use("/api/organization", organizationRoute);
 app.use("/api/organization/category", organizationCategoryRoute);
 app.use("/api/organization/tour", organizationTourRoute);
 app.use("/api/organization/guide", organizationGuideRoute);
-
-//GOOGLE AUTH ROUTE
-// app.use("/auth",googleAuthRoute)
 
 export default app;

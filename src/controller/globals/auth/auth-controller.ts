@@ -3,6 +3,7 @@ import User from "../../../database/model/user-model";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { envConfig } from "../../../config/config";
+import GenerateJWTTokenServices from "../../../services/generate-jwt-token";
 
 class AuthController {
   static async registerUser(req: Request, res: Response) {
@@ -69,13 +70,7 @@ class AuthController {
 
     //generate token using jwt
     //@ts-ignore
-    const token = jwt.sign(
-      { id: data[0].id },
-      envConfig.jsonWebTokenSecretKey!,
-      {
-        expiresIn: envConfig.jsonExpiresIn,
-      }
-    );
+    const token = GenerateJWTTokenServices.generateJWTToken({ id: data[0].id });
     res.status(200).json({
       data: {
         username: data[0].username,

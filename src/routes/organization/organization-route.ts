@@ -37,6 +37,22 @@ router
     ErrorHandlerService.asyncErrorHandler(
       OrganizationController.createCategoryTourTable
     )
+  )
+  .get(
+    Middleware.isLoggedIn,
+    ErrorHandlerService.asyncErrorHandler(
+      OrganizationController.getOrganization
+    )
+  );
+
+router
+  .route("/")
+  .patch(
+    Middleware.isLoggedIn,
+    upload.single("organizationLogo"),
+    ErrorHandlerService.asyncErrorHandler(
+      OrganizationController.updateOrganization
+    )
   );
 
 export default router;

@@ -44,8 +44,6 @@ class User extends Model {
   })
   declare currentOrganizationNumber: string;
 
-  // @HasMany(() => UserProvider)
-  // declare providers: UserProvider[];
 }
 
 export default User;

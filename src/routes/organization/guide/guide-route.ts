@@ -19,6 +19,29 @@ router
     ErrorHandlerService.asyncErrorHandler(
       OrganizationGuideController.createGuide
     )
+  )
+  .get(
+    Middleware.isLoggedIn,
+    ErrorHandlerService.asyncErrorHandler(OrganizationGuideController.getGuides)
+  );
+
+router
+  .route("/:id")
+  .get(
+    Middleware.isLoggedIn,
+    ErrorHandlerService.asyncErrorHandler(OrganizationGuideController.getGuide)
+  )
+  .delete(
+    Middleware.isLoggedIn,
+    ErrorHandlerService.asyncErrorHandler(
+      OrganizationGuideController.deleteGuide
+    )
+  )
+  .patch(
+    Middleware.isLoggedIn,
+    ErrorHandlerService.asyncErrorHandler(
+      OrganizationGuideController.updateGuideStatus
+    )
   );
 
 export default router;

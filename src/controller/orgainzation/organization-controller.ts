@@ -137,6 +137,7 @@ class OrganizationController {
       guideSalary DECIMAL(10, 2),
       guidePassword VARCHAR(255),
       guideStatus ENUM("active", "inactive", "suspended") DEFAULT "active",
+      tourId VARCHAR(36) REFERENCES tour_${organizationNumber}(id),
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`);
@@ -213,7 +214,6 @@ class OrganizationController {
         tourStartDate Date NOT NULL,
         tourEndDate Date NOT NULL,
         tourStatus ENUM('active', 'inactive','cancelled') DEFAULT 'active',
-        guideId VARCHAR(36) REFERENCES guide_${organizationNumber}(id),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`);
@@ -224,6 +224,7 @@ class OrganizationController {
       });
     }
   }
+
   static async createCategoryTourTable(req: IExtendedRequest, res: Response) {
     const organizationNumber = req.currentUser?.currentOrganizationNumber;
     await sequelize.query(`
@@ -236,6 +237,91 @@ class OrganizationController {
     res.status(200).json({
       message: "Organization Created Sucessfully",
       organizationNumber,
+    });
+  }
+
+  static async getOrganization(req: IExtendedRequest, res: Response) {
+    const organizationNumber = req.currentUser?.currentOrganizationNumber;
+    const organization = await sequelize.query(
+      `SELECT id, organizationName, organizationEmail, organizationPhoneNumber, organizationAddress, organizationLogo, organizationPanNo, organizationVatNo, createdAt FROM organization_${organizationNumber}`,
+      {
+        type: QueryTypes.SELECT,
+      }
+    );
+    console.log(organization);
+
+    res.status(200).json({
+      message: "Organization Fetched Sucessfully",
+      data: organization,
+    });
+  }
+
+  static async updateOrganization(req: IExtendedRequest, res: Response) {
+    const organizationNumber = req.currentUser?.currentOrganizationNumber;
+
+    const {
+      organizationName,
+      organizationEmail,
+      organizationPhoneNumber,
+      organizationAddress,
+    } = req.body;
+
+    const organizationLogo = req.file?.path;
+
+    if (
+      !organizationName ||
+      !organizationEmail ||
+      !organizationAddress ||
+      !organizationPhoneNumber
+    ) {
+      res.status(400).json({
+        message:
+          "Please provide organizationName, organizationEmail, organizationPhoneNumber, organizationAddress",
+      });
+      return;
+    }
+
+    // Handle logo update conditionally
+    if (organizationLogo) {
+      // Update with new logo
+      await sequelize.query(
+        `UPDATE organization_${organizationNumber} SET organizationName = ?, organizationEmail = ?, organizationPhoneNumber = ?, organizationAddress = ?, organizationLogo = ?`,
+        {
+          replacements: [
+            organizationName,
+            organizationEmail,
+            organizationPhoneNumber,
+            organizationAddress,
+            organizationLogo,
+          ],
+          type: QueryTypes.UPDATE,
+        }
+      );
+    } else {
+      // Update without changing logo
+      await sequelize.query(
+        `UPDATE organization_${organizationNumber} SET organizationName = ?, organizationEmail = ?, organizationPhoneNumber = ?, organizationAddress = ?`,
+        {
+          replacements: [
+            organizationName,
+            organizationEmail,
+            organizationPhoneNumber,
+            organizationAddress,
+          ],
+          type: QueryTypes.UPDATE,
+        }
+      );
+    }
+
+    res.status(200).json({
+      message: "Successfully updated organization",
+      data: {
+        organizationName,
+        organizationEmail,
+        organizationPhoneNumber,
+        organizationAddress,
+        organizationLogo: organizationLogo || null,
+      },
     });
   }
 }
