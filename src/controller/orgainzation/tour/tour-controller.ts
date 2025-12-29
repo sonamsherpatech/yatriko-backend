@@ -12,13 +12,19 @@ import { v4 as uuidv4 } from "uuid";
 import sequelize from "../../../database/connection";
 import { IExtendedRequest } from "../../../middleware/type";
 import { QueryTypes } from "sequelize";
+import DynamicPricingService from "../../../services/dynamic-pricing-service";
 
 interface IInterfaceTourData {
   tourId: string;
   tourTitle: string;
   tourDescription: string;
-  tourNumberOfPeople: string;
-  tourPrice: string;
+  totalCapacity: number;
+  bookedSeats: number;
+  basePrice: number;
+  currentPrice: number;
+  minimumPrice: number;
+  discountPercentage: number;
+  discountReason: string;
   tourPhoto: string;
   tourDuration: string;
   tourStartDate: string;
@@ -29,13 +35,15 @@ interface IInterfaceTourData {
 }
 
 class TourController {
+  // private static pricingService = new DynamicPricingService();
+
   static async createTour(req: IExtendedRequest, res: Response) {
     const organizationNumber = req.currentUser?.currentOrganizationNumber;
     const {
       tourTitle,
       tourDescription,
-      tourNumberOfPeople,
-      tourPrice,
+      totalCapacity,
+      basePrice,
       tourDuration,
       tourStartDate,
       tourEndDate,
@@ -45,8 +53,8 @@ class TourController {
     if (
       !tourTitle ||
       !tourDescription ||
-      !tourNumberOfPeople ||
-      !tourPrice ||
+      !totalCapacity ||
+      !basePrice ||
       !tourDuration ||
       !tourStartDate ||
       !tourEndDate ||
@@ -54,7 +62,7 @@ class TourController {
     ) {
       res.status(400).json({
         message:
-          "Please Provide tourTitle, tourDescription, tourNumberOfPeople, tourPrice, tourDuration, tourStartDate, tourEndDate",
+          "Please Provide tourTitle, tourDescription, totalCapacity, basePrice, tourDuration, tourStartDate, tourEndDate",
       });
       return;
     }
@@ -65,15 +73,32 @@ class TourController {
 
     const tourId = uuidv4();
 
-    const [result] = await sequelize.query(
-      `INSERT INTO tour_${organizationNumber} (id, tourTitle, tourDescription, tourNumberOfPeople, tourPrice, tourPhoto, tourDuration, tourStartDate, tourEndDate) VALUES (?,?,?,?,?,?,?,?,?)`,
+    const minimumPrice = parseFloat(basePrice) * 0.7;
+
+    const pricingService = new DynamicPricingService();
+
+    const initialPricing = pricingService.calculateDynamicPricing({
+      id: tourId,
+      basePrice: parseFloat(basePrice),
+      minimumPrice: minimumPrice,
+      totalCapacity: parseInt(totalCapacity),
+      bookedSeats: 0,
+      tourStartDate: new Date(tourStartDate),
+    });
+
+    await sequelize.query(
+      `INSERT INTO tour_${organizationNumber} (id, tourTitle, tourDescription, totalCapacity, bookedSeats, basePrice, currentPrice, minimumPrice, discountPercentage, discountReason, tourPhoto, tourDuration, tourStartDate, tourEndDate, tourStatus) VALUES (?,?,?,?,0,?,?,?,?,?,?,?,?,?,'active')`,
       {
         replacements: [
           tourId,
           tourTitle,
           tourDescription,
-          tourNumberOfPeople,
-          tourPrice,
+          totalCapacity,
+          basePrice,
+          initialPricing.newPrice,
+          minimumPrice,
+          initialPricing.discountPercentage,
+          initialPricing.discountReason,
           tourPhoto,
           tourDuration,
           tourStartDate,
@@ -83,6 +108,7 @@ class TourController {
       }
     );
 
+    //Handle Categories
     let categoryIdsParsed: string[] = [];
     if (req.body.categoryIds) {
       try {
@@ -107,6 +133,12 @@ class TourController {
     res.status(200).json({
       message: "Tour inserted sucessfully",
       tourId,
+      pricing: {
+        basePrice: parseFloat(basePrice),
+        currentPrice: initialPricing.newPrice,
+        discount: initialPricing.discountPercentage,
+        discountReason: initialPricing.discountReason,
+      },
     });
   }
 
@@ -114,7 +146,27 @@ class TourController {
     const organizationNumber = req.currentUser?.currentOrganizationNumber;
 
     const tours = await sequelize.query(
-      `SELECT t.id AS tourId, t.tourTitle, t.tourDescription, t.tourNumberOfPeople, t.tourPrice, t.tourPhoto, t.tourDuration, t.tourStartDate, t.tourEndDate, t.tourStatus, t.tourStatus, c.id AS categoryId, c.categoryName, c.categoryDescription FROM tour_${organizationNumber} AS t JOIN tour_category_${organizationNumber} AS tc ON t.id = tc.tourId JOIN category_${organizationNumber} AS c ON tc.categoryId = c.id`,
+      `SELECT 
+        t.id AS tourId, 
+        t.tourTitle, 
+        t.tourDescription, 
+        t.totalCapacity, 
+        t.bookedSeats,
+        t.basePrice,
+        t.currentPrice,
+        t.minimumPrice,
+        t.discountPercentage, 
+        t.tourPhoto, 
+        t.tourDuration, 
+        t.tourStartDate, 
+        t.tourEndDate, 
+        t.tourStatus, 
+        c.id AS categoryId, 
+        c.categoryName, 
+        c.categoryDescription 
+        FROM tour_${organizationNumber} AS t 
+        JOIN tour_category_${organizationNumber} AS tc ON t.id = tc.tourId 
+        JOIN category_${organizationNumber} AS c ON tc.categoryId = c.id`,
       {
         type: QueryTypes.SELECT,
       }
@@ -123,12 +175,30 @@ class TourController {
     const groupedTours = Object.values(
       tours.reduce((acc: any, row: any) => {
         if (!acc[row.tourId]) {
+          const availableSeats = row.totalCapacity - row.bookedSeats;
+          const occupancyRate = (
+            (row.bookedSeats / row.totalCapacity) *
+            100
+          ).toFixed(2);
+          const savings = (row.basePrice - row.currentPrice).toFixed(2);
+
           acc[row.tourId] = {
             tourId: row.tourId,
             tourTitle: row.tourTitle,
             tourDescription: row.tourDescription,
-            tourNumberOfPeople: row.tourNumberOfPeople,
-            tourPrice: row.tourPrice,
+            capacity: {
+              total: row.totalCapacity,
+              booked: row.bookedSeats,
+              available: availableSeats,
+              occupancyRate: `${occupancyRate}%`,
+            },
+            pricing: {
+              basePrice: parseFloat(row.basePrice),
+              currentPrice: parseFloat(row.currentPrice),
+              savings: parseFloat(savings),
+              discountPercentage: parseFloat(row.discountPercentage),
+              discountReason: row.discountReason,
+            },
             tourPhoto: row.tourPhoto,
             tourDuration: row.tourDuration,
             tourStartDate: row.tourStartDate,
@@ -193,8 +263,13 @@ class TourController {
       `SELECT t.id as tourId, 
             t.tourTitle, 
             t.tourDescription, 
-            t.tourNumberOfPeople, 
-            t.tourPrice, 
+            t.totalCapacity,
+            t.bookedSeats, 
+            t.basePrice, 
+            t.currentPrice,
+            t.minimumPrice,
+            t.discountPercentage,
+            t.discountReason,
             t.tourPhoto, 
             t.tourDuration, 
             t.tourStartDate, 
@@ -217,17 +292,37 @@ class TourController {
       return res.status(404).json({ message: "No Tour is found" });
     }
 
+    const firstRow = rows[0];
+    const availableSeats = firstRow.totalCapacity - firstRow.bookedSeats;
+    const occupancyRate = (
+      (firstRow.bookedSeats / firstRow.totalCapacity) *
+      100
+    ).toFixed(2);
+    const savings = (firstRow.basePrice - firstRow.currentPrice).toFixed(2);
+
     const tour = {
-      tourId: rows[0].tourId,
-      tourTitle: rows[0].tourTitle,
-      tourDescription: rows[0].tourDescription,
-      tourNumberOfPeople: rows[0].tourNumberOfPeople,
-      tourPrice: rows[0].tourPrice,
-      tourPhoto: rows[0].tourPhoto,
-      tourDuration: rows[0].tourDuration,
-      tourStartDate: rows[0].tourStartDate,
-      tourEndDate: rows[0].tourEndDate,
-      tourStatus: rows[0].tourStatus,
+      tourId: firstRow.tourId,
+      tourTitle: firstRow.tourTitle,
+      tourDescription: firstRow.tourDescription,
+      capacity: {
+        total: firstRow.totalCapacity,
+        booked: firstRow.bookedSeats,
+        available: availableSeats,
+        occupancyRate: `${occupancyRate}%`,
+      },
+      pricing: {
+        basePrice: parseFloat(firstRow.basePrice.toString()),
+        currentPrice: parseFloat(firstRow.currentPrice.toString()),
+        minimumPrice: parseFloat(firstRow.minimumPrice.toString()),
+        savings: parseFloat(savings),
+        discountPercentage: parseFloat(firstRow.discountPercentage.toString()),
+        discountReason: firstRow.discountReason,
+      },
+      tourPhoto: firstRow.tourPhoto,
+      tourDuration: firstRow.tourDuration,
+      tourStartDate: firstRow.tourStartDate,
+      tourEndDate: firstRow.tourEndDate,
+      tourStatus: firstRow.tourStatus,
       categories: rows.map((row: any) => ({
         categoryId: row.categoryId,
         categoryName: row.categoryName,
@@ -255,8 +350,8 @@ class TourController {
     const {
       tourTitle,
       tourDescription,
-      tourNumberOfPeople,
-      tourPrice,
+      totalCapacity,
+      basePrice,
       tourStatus,
       tourDuration,
       tourStartDate,
@@ -266,8 +361,8 @@ class TourController {
     if (
       !tourTitle ||
       !tourDescription ||
-      !tourNumberOfPeople ||
-      !tourPrice ||
+      !totalCapacity ||
+      !basePrice ||
       !tourStatus ||
       !tourDuration ||
       !tourStartDate ||
@@ -276,22 +371,57 @@ class TourController {
     ) {
       res.status(400).json({
         message:
-          "please provide tourTitle, tourDescription, tourNumberOfPeople, tourPrice, tourStatus, tourDuration, tourStartDate, tourEndDate, categoryIds",
+          "please provide tourTitle, tourDescription, totalCapacity, basePrice, tourStatus, tourDuration, tourStartDate, tourEndDate, categoryIds",
       });
       return;
     }
 
+    const [currentTour] = (await sequelize.query(
+      `SELECT bookedSeats FROM tour_${orgainzationNumber} WHERE id = ?`,
+      {
+        replacements: [id],
+        type: QueryTypes.SELECT,
+      }
+    )) as any[];
+
+    if (!currentTour) {
+      return res.status(404).json({ message: "Tour Not Found" });
+    }
+
+    const minimumPrice = parseFloat(basePrice) * 0.7;
+    const pricingService = new DynamicPricingService();
+
+    const updatedPricing = pricingService.calculateDynamicPricing({
+      id,
+      basePrice: parseFloat(basePrice),
+      minimumPrice: minimumPrice,
+      totalCapacity: parseInt(totalCapacity),
+      bookedSeats: currentTour.bookedSeats,
+      tourStartDate: new Date(tourStartDate),
+    });
+
     let updateQuery: string;
     let replacements: any[];
+
     if (req.file) {
       const tourPhoto = req.file.path;
 
-      updateQuery = `UPDATE tour_${orgainzationNumber} SET tourTitle = ?, tourDescription = ?, tourNumberOfPeople = ?, tourPrice = ?, tourStatus=?, tourPhoto = ?, tourDuration = ?, tourStartDate = ?, tourEndDate = ? WHERE id = ?`;
+      updateQuery = `UPDATE tour_${orgainzationNumber} 
+        SET tourTitle = ?, tourDescription = ?, totalCapacity = ?, 
+        basePrice = ?, currentPrice = ?, minimumPrice = ?,
+        discountPercentage = ?, discountReason = ?, tourStatus=?, 
+        tourPhoto = ?, tourDuration = ?, tourStartDate = ?, tourEndDate = ?,
+        lastPriceUpdate = NOW(),
+      WHERE id = ?`;
       replacements = [
         tourTitle,
         tourDescription,
-        tourNumberOfPeople,
-        tourPrice,
+        totalCapacity,
+        basePrice,
+        updatedPricing.newPrice,
+        minimumPrice,
+        updatedPricing.discountPercentage,
+        updatedPricing.discountReason,
         tourStatus,
         tourPhoto,
         tourDuration,
@@ -300,12 +430,22 @@ class TourController {
         id,
       ];
     } else {
-      updateQuery = `UPDATE tour_${orgainzationNumber} SET tourTitle = ?, tourDescription = ?, tourNumberOfPeople = ?, tourPrice = ?, tourStatus=?, tourDuration = ?, tourStartDate = ?, tourEndDate = ? WHERE id = ?`;
+      updateQuery = `UPDATE tour_${orgainzationNumber} 
+        SET tourTitle = ?, tourDescription = ?, totalCapacity = ?, 
+        basePrice = ?, currentPrice = ?, minimumPrice = ?,
+        discountPercentage = ?, discountReason = ?, tourStatus=?, 
+        tourDuration = ?, tourStartDate = ?, tourEndDate = ?,
+        lastPriceUpdate = NOW()
+      WHERE id = ?`;
       replacements = [
         tourTitle,
         tourDescription,
-        tourNumberOfPeople,
-        tourPrice,
+        totalCapacity,
+        basePrice,
+        updatedPricing.newPrice,
+        minimumPrice,
+        updatedPricing.discountPercentage,
+        updatedPricing.discountReason,
         tourStatus,
         tourDuration,
         tourStartDate,
@@ -350,6 +490,8 @@ class TourController {
 
     res.status(200).json({
       message: "Tour Updated Sucessfully",
+      currentPrice: updatedPricing.newPrice,
+      discount: updatedPricing.discountPercentage,
     });
   }
 }
