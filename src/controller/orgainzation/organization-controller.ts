@@ -204,23 +204,119 @@ class OrganizationController {
     try {
       const organizationNumber = req.currentUser?.currentOrganizationNumber;
       await sequelize.query(`CREATE TABLE IF NOT EXISTS tour_${organizationNumber} (
-        id VARCHAR(36) PRIMARY KEY,
-        tourTitle VARCHAR(255) NOT NULL,
-        tourDescription TEXT NOT NULL,
-        tourNumberOfPeople VARCHAR(36) NOT NULL,
-        tourPrice VARCHAR(255) NOT NULL,
-        tourPhoto VARCHAR(255),
-        tourDuration VARCHAR(255) NOT NULL,
-        tourStartDate Date NOT NULL,
-        tourEndDate Date NOT NULL,
-        tourStatus ENUM('active', 'inactive','cancelled') DEFAULT 'active',
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )`);
+      id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+      tourTitle VARCHAR(255) NOT NULL,
+      tourDescription TEXT NOT NULL,
+      tourDuration VARCHAR(255) NOT NULL,
+      tourPhoto VARCHAR(255),
+
+      -- Capacity Management
+      totalCapacity INT NOT NULL,
+      bookedSeats INT DEFAULT 0,
+
+      -- Dynamic Pricing Fields
+      basePrice DECIMAL(10, 2) NOT NULL COMMENT 'Original price before any discount',
+      currentPrice DECIMAL(10, 2) NOT NULL COMMENT 'Current dynamically calculated price',
+      minimumPrice DECIMAL(10, 2) NOT NULL COMMENT 'Floor price - will not go below this',
+
+      -- Discount Tracking
+      discountPercentage DECIMAL(5, 2) DEFAULT 0.00 COMMENT 'Current discount percentage (can be negative for premium)',
+      discountReason VARCHAR(100) DEFAULT NULL COMMENT 'Reason for discount (e.g., early_bird, last_minute)',
+      lastPriceUpdate TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Last time price was recalculated',
+
+      -- Tour Schedule
+      tourStartDate DATE NOT NULL,
+      tourEndDate DATE NOT NULL,
+
+      -- Tour Status
+      tourStatus ENUM('active', 'inactive', 'cancelled') DEFAULT 'active',
+
+      -- Timestamps
+      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+      -- Indexes for Performance
+      INDEX idx_status_date (tourStatus, tourStartDate),
+      INDEX idx_price_update (lastPriceUpdate),
+      INDEX idx_start_date (tourStartDate),
+      INDEX idx_occupancy (bookedSeats, totalCapacity),
+
+      -- Constraints
+      CONSTRAINT chk_capacity CHECK (totalCapacity > 0),
+      CONSTRAINT chk_booked_seats CHECK (bookedSeats >= 0 AND bookedSeats <= totalCapacity),
+      CONSTRAINT chk_prices CHECK (basePrice > 0 AND currentPrice > 0 AND minimumPrice > 0),
+      CONSTRAINT chk_price_logic CHECK (minimumPrice <= basePrice),
+      CONSTRAINT chk_dates CHECK (tourEndDate >= tourStartDate)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
       next();
     } catch (error) {
+      console.error("Error creating tour table:", error);
       res.status(500).json({
-        message: error,
+        message: "Failed to create tour table",
+        error: error,
+      });
+    }
+  }
+
+  static async createPriceHistoryTable(
+    req: IExtendedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const organizationNumber = req.currentUser?.currentOrganizationNumber;
+      await sequelize.query(`CREATE TABLE IF NOT EXISTS price_history_${organizationNumber} (
+      id VARCHAR(36)  PRIMARY KEY DEFAULT (UUID()),
+      tourId VARCHAR(36) NOT NULL,
+      oldPrice DECIMAL(10, 2) NOT NULL,
+      newPrice DECIMAL(10, 2) NOT NULL,
+      discountPercentage DECIMAL(5, 2) NOT NULL,
+      discountReason VARCHAR(100),
+      occupancyRate DECIMAL(5, 2),
+      daysUntilTour INT,
+      changedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      
+      INDEX idx_tour_date (tourId, changedAt),
+      FOREIGN KEY (tourId) REFERENCES tour_${organizationNumber}(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+      next();
+    } catch (error) {
+      console.error("Error creating price history table:", error);
+      res.status(500).json({
+        message: "Failed to create price history table",
+        error: error,
+      });
+    }
+  }
+
+  static async createBookingsTable(
+    req: IExtendedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const organizationNumber = req.currentUser?.currentOrganizationNumber;
+      await sequelize.query(`CREATE TABLE IF NOT EXISTS bookings_${organizationNumber} (
+      id VARCHAR(36)  PRIMARY KEY DEFAULT (UUID()),
+      tourId VARCHAR(36) NOT NULL REFERENCES tour_${organizationNumber}(id) ON DELETE RESTRICT,
+      touristId VARCHAR(36) REFERENCES tourist_${organizationNumber}(id) ON DELETE SET NULL,
+      numberOfSeats INT NOT NULL,
+      pricePerSeat DECIMAL(10, 2) NOT NULL,
+      totalAmount DECIMAL(10, 2) NOT NULL,
+      bookingStatus ENUM('pending', 'confirmed', 'cancelled', 'completed') DEFAULT 'pending',
+      paymentStatus ENUM('pending', 'paid', 'refunded') DEFAULT 'pending',
+      bookingDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      
+      INDEX idx_tour (tourId),
+      INDEX idx_tourist (touristId)
+
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+      next();
+    } catch (error) {
+      console.error("Error creating bookings table:", error);
+      res.status(500).json({
+        message: "Failed to create bookings table",
+        error: error,
       });
     }
   }
@@ -324,6 +420,8 @@ class OrganizationController {
       },
     });
   }
+
+  //Delete Organization Feature
 }
 
 export default OrganizationController;

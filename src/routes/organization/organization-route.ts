@@ -34,6 +34,8 @@ router
     OrganizationController.createTouristTable,
     OrganizationController.createCategoryTable,
     OrganizationController.createTourTable,
+    OrganizationController.createPriceHistoryTable,
+    OrganizationController.createBookingsTable,
     ErrorHandlerService.asyncErrorHandler(
       OrganizationController.createCategoryTourTable
     )
