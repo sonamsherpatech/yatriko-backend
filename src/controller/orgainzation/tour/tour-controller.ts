@@ -494,6 +494,118 @@ class TourController {
       discount: updatedPricing.discountPercentage,
     });
   }
+
+  static async bookTour(req: IExtendedRequest, res: Response) {
+    const organizationNumber = req.currentUser?.currentOrganizationNumber;
+    const { tourId, numberOfSeats } = req.body;
+
+    if (!tourId || !numberOfSeats) {
+      return res.status(400).json({
+        message: "Please provide tourId and numberOfSeats",
+      });
+    }
+
+    const transaction = await sequelize.transaction();
+
+    try {
+      const [tours] = (await sequelize.query(
+        `SELECT * FROM tour_${organizationNumber} WHERE id = ? FOR UPDATE`,
+        {
+          replacements: [tourId],
+          transaction,
+        }
+      )) as any[];
+
+      if (!tours || tours.length === 0) {
+        await transaction.rollback();
+        return res.status(404).json({
+          message: "Tour not found",
+        });
+      }
+
+      const tour = tours[0];
+      const availableSeats = tour.totalCapacity - tour.bookedSeats;
+
+      if (numberOfSeats > availableSeats) {
+        await transaction.rollback();
+        return res.status(400).json({
+          message: `Only ${availableSeats} seats available`,
+        });
+      }
+
+      //locking the current price for this booking
+      const lockedPrice = parseFloat(tour.currentPrice);
+      const newBookedSeats = tour.bookedSeats + numberOfSeats;
+
+      await sequelize.query(
+        `UPDATE tour_${organizationNumber} SET bookedSeats = ? WHERE id = ?`,
+        {
+          replacements: [newBookedSeats, tourId],
+          transaction,
+        }
+      );
+
+      const pricingService = new DynamicPricingService();
+      const newPricing = pricingService.calculateDynamicPricing({
+        id: tourId,
+        basePrice: parseFloat(tour.basePrice),
+        minimumPrice: parseFloat(tour.minimumPrice),
+        totalCapacity: tour.totalCapacity,
+        bookedSeats: newBookedSeats,
+        tourStartDate: new Date(tour.tourStartDate),
+      });
+
+      await sequelize.query(
+        `UPDATE tour_${organizationNumber} SET currentPrice = ?, discountPercentage = ?, discountReason = ?, lastPriceUpdate = NOW() WHERE id = ?`,
+        {
+          replacements: [
+            newPricing.newPrice,
+            newPricing.discountPercentage,
+            newPricing.discountReason,
+            tourId,
+          ],
+          transaction,
+        }
+      );
+
+      const bookingId = uuidv4();
+      await sequelize.query(
+        `INSERT INTO bookings_${organizationNumber} (id, tourId, userId, numberOfSeats, pricePerSeat, totalAmount, bookingDate) VALUES (?,?,?,?,?,?,NOW())`,
+        {
+          replacements: [
+            bookingId,
+            tourId,
+            req.currentUser?.id,
+            numberOfSeats,
+            lockedPrice,
+            lockedPrice * numberOfSeats,
+          ],
+          transaction,
+        }
+      );
+
+      await transaction.commit();
+
+      res.status(200).json({
+        message: "Booking Sucessfull",
+        data: {
+          bookingId,
+          tourId,
+          numberOfSeats,
+          pricePaid: lockedPrice,
+          totalAmount: lockedPrice * numberOfSeats,
+          newTourPrice: newPricing.newPrice,
+          newDiscount: newPricing.discountPercentage,
+        },
+      });
+    } catch (error) {
+      await transaction.rollback();
+      console.error("Error booking tour: ", error);
+      res.status(500).json({
+        message: "Booking Failed",
+      });
+    }
+  }
 }
 
 export default TourController;

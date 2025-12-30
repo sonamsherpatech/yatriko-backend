@@ -57,7 +57,7 @@ class OrganizationController {
         organizationVatNo VARCHAR(255),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )`
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
       );
 
       //inserting organization number into the organization table
@@ -140,7 +140,7 @@ class OrganizationController {
       tourId VARCHAR(36) REFERENCES tour_${organizationNumber}(id),
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )`);
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
       next();
     } catch (error) {
       res.status(500).json({
@@ -165,7 +165,7 @@ class OrganizationController {
       touristImage VARCHAR(255),
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )`);
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
       next();
     } catch (error) {
       res.status(500).json({
@@ -187,7 +187,7 @@ class OrganizationController {
         categoryDescription TEXT,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )`);
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
       next();
     } catch (error) {
       res.status(500).json({
@@ -328,7 +328,7 @@ class OrganizationController {
         tourId VARCHAR(36) NOT NULL REFERENCES tour_${organizationNumber}(id) ON DELETE CASCADE,
         categoryId VARCHAR(36) NOT NULL REFERENCES category_${organizationNumber}(id) ON DELETE CASCADE,
         PRIMARY KEY(tourId, categoryId)
-      )`);
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
 
     res.status(200).json({
       message: "Organization Created Sucessfully",

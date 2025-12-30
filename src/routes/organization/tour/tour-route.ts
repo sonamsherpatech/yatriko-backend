@@ -37,4 +37,6 @@ router
     ErrorHandlerService.asyncErrorHandler(TourController.updateTour)
   );
 
+router.route("/book").post(Middleware.isLoggedIn, TourController.bookTour);
+
 export default router;
