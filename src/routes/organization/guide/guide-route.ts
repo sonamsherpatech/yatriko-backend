@@ -20,6 +20,18 @@ router
       OrganizationGuideController.createGuide
     )
   )
+  .post(
+    Middleware.isLoggedIn,
+    ErrorHandlerService.asyncErrorHandler(
+      OrganizationGuideController.assignGuideToTour
+    )
+  )
+  .get(
+    Middleware.isLoggedIn,
+    ErrorHandlerService.asyncErrorHandler(
+      OrganizationGuideController.getAvailableGuides
+    )
+  )
   .get(
     Middleware.isLoggedIn,
     ErrorHandlerService.asyncErrorHandler(OrganizationGuideController.getGuides)
@@ -37,10 +49,23 @@ router
       OrganizationGuideController.deleteGuide
     )
   )
+  .put(
+    Middleware.isLoggedIn,
+    upload.single("guideImage"),
+    ErrorHandlerService.asyncErrorHandler(
+      OrganizationGuideController.updateGuide
+    )
+  )
   .patch(
     Middleware.isLoggedIn,
     ErrorHandlerService.asyncErrorHandler(
       OrganizationGuideController.updateGuideStatus
+    )
+  )
+  .patch(
+    Middleware.isLoggedIn,
+    ErrorHandlerService.asyncErrorHandler(
+      OrganizationGuideController.unassignGuideFromTour
     )
   );
 
